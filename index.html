@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오토바이 부품 견적서 시스템</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 로그인 페이지 -->
+        <div id="login-page" class="page active">
+            <div class="login-container">
+                <h1>오토바이 부품 견적서 시스템</h1>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="username">사용자명:</label>
+                        <input type="text" id="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">비밀번호:</label>
+                        <input type="password" id="password" required>
+                    </div>
+                    <button type="submit">로그인</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 메인 대시보드 -->
+        <div id="main-page" class="page">
+            <header>
+                <h1>견적서 작성</h1>
+                <div class="user-info">
+                    <span id="current-user"></span>
+                    <button id="admin-btn" style="display: none;">관리자 페이지</button>
+                    <button id="logout-btn">로그아웃</button>
+                </div>
+            </header>
+
+            <nav class="tab-nav">
+                <button class="tab-btn active" data-tab="shop-info">정비업체 정보</button>
+                <button class="tab-btn" data-tab="customer-info">고객 정보</button>
+                <button class="tab-btn" data-tab="parts-selection">부품 선택</button>
+                <button class="tab-btn" data-tab="quote-preview">견적서 미리보기</button>
+            </nav>
+
+            <main class="content">
+                <!-- 정비업체 정보 탭 -->
+                <div id="shop-info" class="tab-content active">
+                    <h2>정비업체 정보</h2>
+                    <form id="shop-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="shop-name">업체명:</label>
+                                <input type="text" id="shop-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="shop-phone">전화번호:</label>
+                                <input type="tel" id="shop-phone" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="shop-address">주소:</label>
+                            <input type="text" id="shop-address" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="shop-owner">대표자명:</label>
+                            <input type="text" id="shop-owner" required>
+                        </div>
+                    </form>
+                    <div class="step-navigation">
+                        <button type="button" class="btn-primary next-step" data-next="customer-info">다음</button>
+                    </div>
+                </div>
+
+                <!-- 고객 정보 탭 -->
+                <div id="customer-info" class="tab-content">
+                    <h2>고객 정보</h2>
+                    <form id="customer-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="customer-name">고객명:</label>
+                                <input type="text" id="customer-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="customer-phone">전화번호:</label>
+                                <input type="tel" id="customer-phone" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="car-brand">오토바이 브랜드:</label>
+                                <select id="car-brand" required>
+                                    <option value="">선택하세요</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="car-model">오토바이 모델:</label>
+                                <select id="car-model" required>
+                                    <option value="">브랜드를 먼저 선택하세요</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="car-year">연식:</label>
+                            <input type="number" id="car-year" min="1990" max="2024" required>
+                        </div>
+                    </form>
+                    <div class="step-navigation">
+                        <button type="button" class="btn-secondary prev-step" data-prev="shop-info">이전</button>
+                        <button type="button" class="btn-primary next-step" data-next="parts-selection">다음</button>
+                    </div>
+                </div>
+
+                <!-- 부품 선택 탭 -->
+                <div id="parts-selection" class="tab-content">
+                    <h2>부품 선택</h2>
+                    <div class="parts-container">
+                        <div class="diagram-section">
+                            <h3>부품 도면</h3>
+                            <div id="parts-diagram">
+                                <p>오토바이를 선택하면 부품 도면이 표시됩니다.</p>
+                            </div>
+                        </div>
+                        <div class="selected-parts">
+                            <h3>선택된 부품</h3>
+                            <div class="labor-rate-setting">
+                                <label for="labor-rate">시간당 공임비:</label>
+                                <input type="number" id="labor-rate" value="55000" min="0" step="1000">
+                                <span>원/시간</span>
+                            </div>
+                            <div id="parts-list">
+                                <p>선택된 부품이 없습니다.</p>
+                            </div>
+                            <div class="total-price">
+                                <strong>총 금액: <span id="total-amount">0</span>원</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step-navigation">
+                        <button type="button" class="btn-secondary prev-step" data-prev="customer-info">이전</button>
+                        <button type="button" class="btn-primary next-step" data-next="quote-preview">견적서 미리보기</button>
+                    </div>
+                </div>
+
+                <!-- 견적서 미리보기 탭 -->
+                <div id="quote-preview" class="tab-content">
+                    <h2>견적서 미리보기</h2>
+                    <div class="quote-actions">
+                        <button id="generate-quote" class="btn-primary">견적서 생성</button>
+                        <button id="print-quote" class="btn-secondary">인쇄</button>
+                    </div>
+                    <div id="quote-content">
+                        <p>정보를 입력하고 부품을 선택한 후 견적서를 생성하세요.</p>
+                    </div>
+                    <div class="step-navigation">
+                        <button type="button" class="btn-secondary prev-step" data-prev="parts-selection">이전</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- 관리자 페이지 -->
+        <div id="admin-page" class="page">
+            <header>
+                <h1>관리자 페이지</h1>
+                <div class="user-info">
+                    <span id="admin-user">관리자</span>
+                    <button id="back-to-main">메인으로 돌아가기</button>
+                    <button id="admin-logout-btn">로그아웃</button>
+                </div>
+            </header>
+            <nav class="admin-nav">
+                <button class="admin-tab-btn active" data-tab="brand-management">브랜드/모델 관리</button>
+                <button class="admin-tab-btn" data-tab="parts-management">부품 관리</button>
+            </nav>
+            <main class="admin-content">
+                <!-- 브랜드/모델 관리 -->
+                <div id="brand-management" class="admin-tab-content active">
+                    <h2>브랜드/모델 관리</h2>
+                    <div class="admin-section">
+                        <h3>새 브랜드 추가</h3>
+                        <form id="brand-form">
+                            <input type="text" id="new-brand" placeholder="브랜드명" required>
+                            <button type="submit">추가</button>
+                        </form>
+                    </div>
+                    <div class="admin-section">
+                        <h3>새 모델 추가</h3>
+                        <form id="model-form">
+                            <select id="brand-select" required>
+                                <option value="">브랜드 선택</option>
+                            </select>
+                            <input type="text" id="new-model" placeholder="모델명" required>
+                            <input type="file" id="diagram-upload" accept="image/*" required>
+                            <button type="submit">추가</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 부품 관리 -->
+                <div id="parts-management" class="admin-tab-content">
+                    <h2>부품 관리</h2>
+                    <div class="admin-section">
+                        <h3>부품 추가</h3>
+                        <div class="parts-management-container">
+                            <div class="parts-form-section">
+                                <form id="parts-form">
+                                    <select id="parts-brand-select" required>
+                                        <option value="">브랜드 선택</option>
+                                    </select>
+                                    <select id="parts-model-select" required>
+                                        <option value="">모델 선택</option>
+                                    </select>
+                                    <input type="text" id="part-name" placeholder="부품명" required>
+                                    <input type="number" id="part-price" placeholder="가격" required>
+                                    <input type="text" id="part-position" placeholder="도면상 위치 (x,y)" required>
+                                    <button type="submit">추가</button>
+                                </form>
+                                
+                                <div class="existing-parts-section">
+                                    <h4>기존 부품 목록</h4>
+                                    <div id="existing-parts-list">
+                                        <p>브랜드와 모델을 선택하면 부품 목록이 표시됩니다.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="parts-image-section">
+                                <h4>도면 이미지</h4>
+                                <div id="parts-admin-diagram">
+                                    <p>브랜드와 모델을 선택하면 도면이 표시됩니다.</p>
+                                </div>
+                                <div class="image-controls">
+                                    <input type="file" id="update-diagram" accept="image/*" style="display: none;">
+                                    <button type="button" id="change-image-btn" style="display: none;">이미지 변경</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
