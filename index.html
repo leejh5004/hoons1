@@ -11,6 +11,7 @@
         // Firebase SDK 모듈 import
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, doc, setDoc, getDoc, getDocs, onSnapshot, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
         
         // Firebase 설정
         const firebaseConfig = {
@@ -26,10 +27,12 @@
         // Firebase 초기화
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const storage = getStorage(app);
         
         // Firebase 함수들을 전역으로 노출
         window.firebaseApp = app;
         window.firebaseDb = db;
+        window.firebaseStorage = storage;
         window.firebaseCollection = collection;
         window.firebaseDoc = doc;
         window.firebaseSetDoc = setDoc;
@@ -37,6 +40,10 @@
         window.firebaseGetDocs = getDocs;
         window.firebaseOnSnapshot = onSnapshot;
         window.firebaseDeleteDoc = deleteDoc;
+        window.firebaseStorageRef = ref;
+        window.firebaseUploadBytes = uploadBytes;
+        window.firebaseGetDownloadURL = getDownloadURL;
+        window.firebaseDeleteObject = deleteObject;
     </script>
 </head>
 <body>
@@ -71,16 +78,16 @@
             </header>
 
             <nav class="tab-nav">
-                <button class="tab-btn active" data-tab="shop-info">정비업체 정보</button>
-                <button class="tab-btn" data-tab="customer-info">고객 정보</button>
+                <button class="tab-btn active" data-tab="shop-info">공급자</button>
+                <button class="tab-btn" data-tab="customer-info">차량정보</button>
                 <button class="tab-btn" data-tab="parts-selection">부품 선택</button>
                 <button class="tab-btn" data-tab="quote-preview">견적서 미리보기</button>
             </nav>
 
             <main class="content">
-                <!-- 정비업체 정보 탭 -->
+                <!-- 공급자 정보 탭 -->
                 <div id="shop-info" class="tab-content active">
-                    <h2>정비업체 정보</h2>
+                    <h2>공급자</h2>
                     <form id="shop-form">
                         <div class="form-row">
                             <div class="form-group">
@@ -88,7 +95,17 @@
                                 <input type="text" id="shop-name" required>
                             </div>
                             <div class="form-group">
-                                <label for="shop-phone">전화번호:</label>
+                                <label for="shop-business-number">사업자등록번호:</label>
+                                <input type="text" id="shop-business-number" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="shop-owner">대표자:</label>
+                                <input type="text" id="shop-owner" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="shop-phone">연락처:</label>
                                 <input type="tel" id="shop-phone" required>
                             </div>
                         </div>
@@ -96,9 +113,19 @@
                             <label for="shop-address">주소:</label>
                             <input type="text" id="shop-address" required>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="shop-account">계좌정보:</label>
+                                <input type="text" id="shop-account" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="shop-bank">은행:</label>
+                                <input type="text" id="shop-bank" required>
+                            </div>
+                        </div>
                         <div class="form-group">
-                            <label for="shop-owner">대표자명:</label>
-                            <input type="text" id="shop-owner" required>
+                            <label for="shop-account-holder">예금주:</label>
+                            <input type="text" id="shop-account-holder" required>
                         </div>
                     </form>
                     <div class="step-navigation">
@@ -108,35 +135,75 @@
 
                 <!-- 고객 정보 탭 -->
                 <div id="customer-info" class="tab-content">
-                    <h2>고객 정보</h2>
+                    <h2>차량정보</h2>
                     <form id="customer-form">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="customer-name">고객명:</label>
-                                <input type="text" id="customer-name" required>
+                                <label for="vehicle-number">차량번호:</label>
+                                <input type="text" id="vehicle-number" required>
                             </div>
                             <div class="form-group">
-                                <label for="customer-phone">전화번호:</label>
-                                <input type="tel" id="customer-phone" required>
+                                <label for="vehicle-manufacturer">제조사:</label>
+                                <select id="vehicle-manufacturer" required>
+                                    <option value="">제조사 선택</option>
+                                    <option value="혼다">혼다</option>
+                                    <option value="야마하">야마하</option>
+                                    <option value="스즈키">스즈키</option>
+                                    <option value="가와사키">가와사키</option>
+                                    <option value="BMW">BMW</option>
+                                    <option value="두카티">두카티</option>
+                                    <option value="KTM">KTM</option>
+                                    <option value="기타">기타</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="vehicle-model">모델명:</label>
+                                <select id="vehicle-model" required>
+                                    <option value="">모델명 선택</option>
+                                    <option value="CBR">CBR</option>
+                                    <option value="CB">CB</option>
+                                    <option value="PCX">PCX</option>
+                                    <option value="R1">R1</option>
+                                    <option value="R6">R6</option>
+                                    <option value="MT">MT</option>
+                                    <option value="GSX-R">GSX-R</option>
+                                    <option value="Ninja">Ninja</option>
+                                    <option value="Z">Z</option>
+                                    <option value="S1000RR">S1000RR</option>
+                                    <option value="Sportster">Sportster</option>
+                                    <option value="Panigale">Panigale</option>
+                                    <option value="Duke">Duke</option>
+                                    <option value="기타">기타</option>
+                                </select>
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="car-brand">오토바이 브랜드:</label>
-                                <select id="car-brand" required>
-                                    <option value="">선택하세요</option>
-                                </select>
+                                <label for="vehicle-mileage">주행거리:</label>
+                                <input type="text" id="vehicle-mileage" required>
                             </div>
                             <div class="form-group">
-                                <label for="car-model">오토바이 모델:</label>
-                                <select id="car-model" required>
-                                    <option value="">브랜드를 먼저 선택하세요</option>
-                                </select>
+                                <label for="vehicle-year">연식:</label>
+                                <input type="text" id="vehicle-year" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="vehicle-color">색상:</label>
+                                <input type="text" id="vehicle-color" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="vehicle-checkin">입고일:</label>
+                                <input type="date" id="vehicle-checkin" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="vehicle-checkout">출고일:</label>
+                                <input type="date" id="vehicle-checkout">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="car-year">연식:</label>
-                            <input type="number" id="car-year" min="1990" max="2024" required>
+                            <label for="vehicle-memo">메모:</label>
+                            <textarea id="vehicle-memo" rows="3"></textarea>
                         </div>
                     </form>
                     <div class="step-navigation">
@@ -150,9 +217,18 @@
                     <h2>부품 선택</h2>
                     <div class="parts-container">
                         <div class="diagram-section">
-                            <h3>부품 도면</h3>
-                            <div id="parts-diagram">
+                            <div class="diagram-header">
+                                <h3>부품 도면</h3>
+                                <div class="diagram-controls">
+                                    <button id="show-all-diagrams" class="btn-secondary">전체 도면 보기</button>
+                                    <button id="show-brand-diagrams" class="btn-secondary" style="display: none;">브랜드별 보기</button>
+                                </div>
+                            </div>
+                            <div id="diagram-grid" class="diagram-grid">
                                 <p>오토바이를 선택하면 부품 도면이 표시됩니다.</p>
+                            </div>
+                            <div id="parts-diagram" style="display: none;">
+                                <!-- 선택된 도면이 여기에 표시됩니다 -->
                             </div>
                         </div>
                         <div class="selected-parts">
@@ -247,7 +323,17 @@
                                     </select>
                                     <input type="text" id="part-name" placeholder="부품명" required>
                                     <input type="number" id="part-price" placeholder="가격" required>
-                                    <input type="text" id="part-position" placeholder="도면상 위치 (x,y)" required>
+                                    <div class="positions-container">
+                                        <label>위치:</label>
+                                        <div id="position-inputs">
+                                            <div class="position-input-group">
+                                                <input type="text" class="part-position" placeholder="위치 입력 (예: 10, 20)" required>
+                                                <button type="button" class="remove-position" style="display: none;">삭제</button>
+                                            </div>
+                                        </div>
+                                        <button type="button" id="add-position-btn">위치 추가</button>
+                                    </div>
+
                                     <button type="submit">추가</button>
                                 </form>
                                 
