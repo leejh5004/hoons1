@@ -1,3 +1,8 @@
+// Firebase 전역 변수
+let firebaseApp = null;
+let firebaseDb = null;
+let isFirebaseEnabled = false;
+
 // 전역 변수
 let currentUser = null;
 let brands = [];
@@ -8,6 +13,83 @@ let shopInfo = {};
 let customerInfo = {};
 let modelImages = {}; // 모델별 이미지 저장
 let laborRate = 55000; // 시간당 공임비 (기본값: 55,000원)
+
+// Firebase 초기화 확인
+function initializeFirebase() {
+    console.log('🔥 Firebase 초기화 시도 중...');
+    console.log('window.firebaseApp:', window.firebaseApp);
+    console.log('window.firebaseDb:', window.firebaseDb);
+    
+    // Firebase가 로드되었는지 확인
+    if (window.firebaseApp && window.firebaseDb) {
+        firebaseApp = window.firebaseApp;
+        firebaseDb = window.firebaseDb;
+        isFirebaseEnabled = true;
+        console.log('✅ Firebase 연결 성공!');
+        
+        // 실시간 동기화 설정
+        setupRealtimeSync();
+        console.log('🚀 실시간 동기화 활성화됨!');
+        return true;
+    } else {
+        console.log('❌ Firebase 설정이 없습니다. LocalStorage를 사용합니다.');
+        isFirebaseEnabled = false;
+        return false;
+    }
+}
+
+// 실시간 동기화 설정
+function setupRealtimeSync() {
+    if (!isFirebaseEnabled || !firebaseDb) return;
+    
+    const docRef = window.firebaseDoc(firebaseDb, 'motorcycleData', 'main');
+    
+    // 실시간 리스너 설정
+    window.firebaseOnSnapshot(docRef, (doc) => {
+        if (doc.exists()) {
+            const data = doc.data();
+            console.log('🔄 실시간 데이터 업데이트 감지');
+            
+            // 데이터 업데이트
+            brands = data.brands || brands;
+            models = data.models || models;
+            parts = data.parts || parts;
+            shopInfo = data.shopInfo || shopInfo;
+            customerInfo = data.customerInfo || customerInfo;
+            modelImages = data.modelImages || modelImages;
+            laborRate = data.laborRate || laborRate;
+            
+            // UI 업데이트
+            updateAllInterfaces();
+            console.log('✨ UI 업데이트 완료');
+        }
+    }, (error) => {
+        console.error('실시간 동기화 오류:', error);
+    });
+}
+
+// 모든 인터페이스 업데이트
+function updateAllInterfaces() {
+    // 브랜드 선택 업데이트
+    updateBrandSelect();
+    
+    // 관리자 인터페이스 업데이트
+    if (currentUser === 'admin') {
+        updateAdminInterface();
+        displayExistingParts();
+        displayPartsAdminDiagram();
+    }
+    
+    // 사용자 인터페이스 업데이트
+    displayPartsDiagram();
+    updateSelectedPartsList();
+    
+    // 공임비 입력 필드 업데이트
+    const laborRateInput = document.getElementById('labor-rate');
+    if (laborRateInput) {
+        laborRateInput.value = laborRate;
+    }
+}
 
 // 초기 데이터 설정
 function initializeData() {
@@ -44,9 +126,9 @@ function initializeData() {
     loadFromStorage();
 }
 
-// 로컬 스토리지 관리
-function saveToStorage() {
-    localStorage.setItem('motorcyclePartsData', JSON.stringify({
+// 데이터 저장 관리 (Firebase + LocalStorage)
+async function saveToStorage() {
+    const data = {
         brands,
         models,
         parts,
@@ -54,13 +136,55 @@ function saveToStorage() {
         customerInfo,
         modelImages,
         laborRate
-    }));
+    };
+    
+    // Firebase 저장 시도
+    if (isFirebaseEnabled && firebaseDb) {
+        try {
+            await window.firebaseSetDoc(window.firebaseDoc(firebaseDb, 'motorcycleData', 'main'), data);
+            console.log('Firebase에 데이터 저장 완료');
+        } catch (error) {
+            console.error('Firebase 저장 실패:', error);
+            // Firebase 실패 시 LocalStorage로 폴백
+            localStorage.setItem('motorcyclePartsData', JSON.stringify(data));
+        }
+    } else {
+        // LocalStorage 저장
+        localStorage.setItem('motorcyclePartsData', JSON.stringify(data));
+    }
 }
 
-function loadFromStorage() {
-    const saved = localStorage.getItem('motorcyclePartsData');
-    if (saved) {
-        const data = JSON.parse(saved);
+async function loadFromStorage() {
+    let data = null;
+    
+    // Firebase에서 데이터 로드 시도
+    if (isFirebaseEnabled && firebaseDb) {
+        try {
+            const docRef = window.firebaseDoc(firebaseDb, 'motorcycleData', 'main');
+            const docSnap = await window.firebaseGetDoc(docRef);
+            
+            if (docSnap.exists()) {
+                data = docSnap.data();
+                console.log('Firebase에서 데이터 로드 완료');
+            } else {
+                console.log('Firebase에 저장된 데이터가 없습니다.');
+            }
+        } catch (error) {
+            console.error('Firebase 로드 실패:', error);
+        }
+    }
+    
+    // Firebase에서 데이터를 가져오지 못한 경우 LocalStorage 사용
+    if (!data) {
+        const saved = localStorage.getItem('motorcyclePartsData');
+        if (saved) {
+            data = JSON.parse(saved);
+            console.log('LocalStorage에서 데이터 로드 완료');
+        }
+    }
+    
+    // 데이터 적용
+    if (data) {
         brands = data.brands || brands;
         models = data.models || models;
         parts = data.parts || parts;
@@ -849,8 +973,15 @@ function handleDiagramClick(event) {
 }
 
 // 이벤트 리스너 등록
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    // Firebase 초기화 시도
+    initializeFirebase();
+    
+    // 데이터 초기화
     initializeData();
+    
+    // Firebase 또는 LocalStorage에서 데이터 로드
+    await loadFromStorage();
     
     // 로그인 폼
     document.getElementById('login-form').addEventListener('submit', handleLogin);
