@@ -355,47 +355,77 @@ function updateDiagramGrid() {
     // 해당 브랜드의 모든 모델 중 도면이 있는 것들만 표시
     const availableModels = models[brand].filter(model => {
         const key = `${brand}-${model}`;
-        const hasImage = modelImages[key];
+        const hasImage = modelImages[key] && (Array.isArray(modelImages[key]) ? modelImages[key].length > 0 : modelImages[key]);
         console.log(`모델 ${model} (키: ${key}) - 이미지 있음:`, !!hasImage);
         return hasImage;
     });
     
     console.log('도면이 있는 모델들:', availableModels);
     
+    // 도면 개수 정보 표시
+    const totalModels = models[brand] ? models[brand].length : 0;
+    const availableCount = availableModels.length;
+    const diagramCountInfo = `<div class="diagram-count-info" style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; text-align: center;">
+        <strong>${brand}</strong> 브랜드: 전체 모델 ${totalModels}개 중 도면 있는 모델 <span style="color: #28a745; font-weight: bold;">${availableCount}개</span>
+    </div>`;
+    
     if (availableModels.length === 0) {
-        diagramGrid.innerHTML = '<p>해당 브랜드의 도면이 없습니다.</p>';
+        diagramGrid.innerHTML = diagramCountInfo + '<p>해당 브랜드의 도면이 없습니다.</p>';
         return;
     }
     
-    diagramGrid.innerHTML = '';
+    diagramGrid.innerHTML = diagramCountInfo;
     
     availableModels.forEach(model => {
         const key = `${brand}-${model}`;
         const partCount = parts[key] ? parts[key].length : 0;
+        const imageData = modelImages[key];
         
-        const diagramItem = document.createElement('div');
-        diagramItem.className = 'diagram-item';
-        diagramItem.onclick = () => selectDiagram(key, model);
-        
-        diagramItem.innerHTML = `
-            <img src="${modelImages[key]}" alt="${model} 도면">
-            <div class="diagram-label">${model}</div>
-            <div class="part-count">${partCount}개 부품</div>
-        `;
-        
-        diagramGrid.appendChild(diagramItem);
+        // 배열인 경우 각 이미지별로 아이템 생성, 아닌 경우 단일 아이템 생성
+        if (Array.isArray(imageData)) {
+            imageData.forEach((imageUrl, index) => {
+                const diagramItem = document.createElement('div');
+                diagramItem.className = 'diagram-item';
+                diagramItem.onclick = () => selectDiagram(key, model, index);
+                
+                diagramItem.innerHTML = `
+                    <img src="${imageUrl}" alt="${model} 도면">
+                    <div class="diagram-label">${model} ${imageData.length > 1 ? `(${index + 1}/${imageData.length})` : ''}</div>
+                    <div class="part-count">${partCount}개 부품</div>
+                    <button class="delete-btn" onclick="deleteImage('${key}', ${index})" title="이미지 삭제">×</button>
+                `;
+                
+                diagramGrid.appendChild(diagramItem);
+            });
+        } else {
+            // 기존 단일 이미지 처리 (하위 호환성)
+            const diagramItem = document.createElement('div');
+            diagramItem.className = 'diagram-item';
+            diagramItem.onclick = () => selectDiagram(key, model);
+            
+            diagramItem.innerHTML = `
+                 <img src="${imageData}" alt="${model} 도면">
+                 <div class="diagram-label">${model}</div>
+                 <div class="part-count">${partCount}개 부품</div>
+                 <button class="delete-btn" onclick="deleteImage('${key}', 0)" title="이미지 삭제">×</button>
+             `;
+            
+            diagramGrid.appendChild(diagramItem);
+        }
     });
 }
 
 // 도면 선택
-function selectDiagram(key, modelName) {
+function selectDiagram(key, modelName, imageIndex = 0) {
     // 기존 선택된 도면 아이템에서 selected 클래스 제거
     document.querySelectorAll('.diagram-item').forEach(item => {
         item.classList.remove('selected');
     });
     
     // 클릭된 도면 아이템에 selected 클래스 추가
-    event.currentTarget.classList.add('selected');
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('selected');
+    }
     
     // 도면 표시 영역을 보이게 하고 그리드는 숨김
     const diagramGrid = document.getElementById('diagram-grid');
@@ -405,21 +435,33 @@ function selectDiagram(key, modelName) {
     diagramContainer.style.display = 'block';
     
     const carParts = parts[key];
-    const savedImage = modelImages[key];
+    const imageData = modelImages[key];
     
     if (!carParts) {
         diagramContainer.innerHTML = '<p>해당 모델의 부품 정보가 없습니다.</p><button onclick="backToGrid()">도면 목록으로 돌아가기</button>';
         return;
     }
     
+    // 이미지 URL 결정 (배열인 경우 인덱스 사용, 아닌 경우 그대로 사용)
+    let savedImage;
+    if (Array.isArray(imageData)) {
+        savedImage = imageData[imageIndex] || imageData[0];
+    } else {
+        savedImage = imageData;
+    }
+    
     if (savedImage) {
+        const imageTitle = Array.isArray(imageData) && imageData.length > 1 ? 
+            `${modelName} 부품 도면 (${imageIndex + 1}/${imageData.length})` : 
+            `${modelName} 부품 도면`;
+            
         diagramContainer.innerHTML = `
             <div style="margin-bottom: 10px;">
                 <button onclick="backToGrid()" class="btn-secondary">← 도면 목록으로 돌아가기</button>
-                <h4 style="display: inline-block; margin-left: 15px;">${modelName} 부품 도면</h4>
+                <h4 style="display: inline-block; margin-left: 15px;">${imageTitle}</h4>
             </div>
             <div style="position: relative; width: 100%; height: 400px; background: #e9ecef; border-radius: 5px; border: 2px solid #28a745;">
-                <img src="${savedImage}" alt="${modelName} 부품 도면" style="width: 100%; height: 100%; object-fit: fill;">
+                <img src="${savedImage}" alt="${imageTitle}" style="width: 100%; height: 100%; object-fit: fill;">
             </div>
         `;
     } else {
@@ -524,6 +566,140 @@ function backToGrid() {
     diagramContainer.innerHTML = '';
 }
 
+// 현재 등록된 데이터 상태 확인 함수
+function checkCurrentData() {
+    console.log('=== 현재 등록된 데이터 현황 ===');
+    
+    // 브랜드 개수
+    console.log('등록된 브랜드 개수:', brands.length);
+    console.log('브랜드 목록:', brands);
+    
+    // 각 브랜드별 모델 개수
+    let totalModels = 0;
+    Object.keys(models).forEach(brand => {
+        const modelCount = models[brand].length;
+        totalModels += modelCount;
+        console.log(`${brand} 브랜드 모델 개수: ${modelCount}개`);
+        console.log(`${brand} 모델 목록:`, models[brand]);
+    });
+    console.log('전체 모델 개수:', totalModels);
+    
+    // 도면이 있는 모델 개수
+    const diagramKeys = Object.keys(modelImages);
+    console.log('도면이 있는 모델 개수:', diagramKeys.length);
+    console.log('도면이 있는 모델 목록:', diagramKeys);
+    
+    // 각 브랜드별 도면 개수
+    Object.keys(models).forEach(brand => {
+        const brandDiagrams = diagramKeys.filter(key => key.startsWith(brand + '-'));
+        console.log(`${brand} 브랜드 도면 개수: ${brandDiagrams.length}개`);
+    });
+    
+    // 부품이 등록된 모델 개수
+    const partsKeys = Object.keys(parts);
+    console.log('부품이 등록된 모델 개수:', partsKeys.length);
+    
+    // 전체 부품 개수
+    let totalParts = 0;
+    Object.keys(parts).forEach(key => {
+        totalParts += parts[key].length;
+    });
+    console.log('전체 부품 개수:', totalParts);
+    
+    return {
+        brands: brands.length,
+        totalModels: totalModels,
+        diagramCount: diagramKeys.length,
+        partsModels: partsKeys.length,
+        totalParts: totalParts
+    };
+}
+
+// 이미지 삭제 함수
+async function deleteImage(key, imageIndex) {
+    if (!confirm('이 이미지를 삭제하시겠습니까?')) {
+        return;
+    }
+
+    try {
+        const imageData = modelImages[key];
+        
+        if (Array.isArray(imageData)) {
+            // 배열인 경우
+            if (imageIndex >= 0 && imageIndex < imageData.length) {
+                const imageUrl = imageData[imageIndex];
+                
+                // Firebase Storage에서 이미지 삭제
+                if (isFirebaseEnabled && imageUrl.includes('firebasestorage.googleapis.com')) {
+                    try {
+                        const imagePath = extractImagePathFromUrl(imageUrl);
+                        await deleteImageFromStorage(imagePath);
+                    } catch (error) {
+                        console.warn('Firebase Storage에서 이미지 삭제 실패:', error);
+                    }
+                }
+                
+                // 배열에서 해당 이미지 제거
+                imageData.splice(imageIndex, 1);
+                
+                // 배열이 비어있으면 전체 키 삭제
+                if (imageData.length === 0) {
+                    delete modelImages[key];
+                    // 관련 부품 데이터도 삭제
+                    if (parts[key]) {
+                        delete parts[key];
+                    }
+                }
+            }
+        } else {
+            // 단일 이미지인 경우
+            if (imageIndex === 0) {
+                // Firebase Storage에서 이미지 삭제
+                if (isFirebaseEnabled && imageData.includes('firebasestorage.googleapis.com')) {
+                    try {
+                        const imagePath = extractImagePathFromUrl(imageData);
+                        await deleteImageFromStorage(imagePath);
+                    } catch (error) {
+                        console.warn('Firebase Storage에서 이미지 삭제 실패:', error);
+                    }
+                }
+                
+                // 전체 키 삭제
+                delete modelImages[key];
+                // 관련 부품 데이터도 삭제
+                if (parts[key]) {
+                    delete parts[key];
+                }
+            }
+        }
+        
+        // 데이터 저장
+        await saveToStorage();
+        
+        // UI 업데이트
+        updateDiagramGrid();
+        
+        alert('이미지가 삭제되었습니다.');
+        
+    } catch (error) {
+        console.error('이미지 삭제 중 오류 발생:', error);
+        alert('이미지 삭제 중 오류가 발생했습니다.');
+    }
+}
+
+// Firebase Storage URL에서 이미지 경로 추출
+function extractImagePathFromUrl(url) {
+    try {
+        const urlObj = new URL(url);
+        const pathParts = urlObj.pathname.split('/');
+        const encodedPath = pathParts[pathParts.length - 1];
+        return decodeURIComponent(encodedPath);
+    } catch (error) {
+        console.error('URL에서 경로 추출 실패:', error);
+        return null;
+    }
+}
+
 // 전체 도면 보기 함수
 function showAllDiagrams() {
     console.log('showAllDiagrams 함수 호출됨');
@@ -566,13 +742,20 @@ function showAllDiagrams() {
     
     console.log('brandDiagrams:', brandDiagrams);
     
+    // 도면 개수 정보 표시
+    const totalModels = models[selectedBrand] ? models[selectedBrand].length : 0;
+    const availableCount = brandDiagrams.length;
+    const diagramCountInfo = `<div class="diagram-count-info" style="margin-bottom: 15px; padding: 10px; background: #e3f2fd; border-radius: 5px; text-align: center;">
+        <strong>${selectedBrand}</strong> 브랜드 전체 도면: <span style="color: #1976d2; font-weight: bold;">${availableCount}개</span> (전체 모델 ${totalModels}개 중)
+    </div>`;
+    
     if (brandDiagrams.length === 0) {
-        diagramGrid.innerHTML = `<p>${selectedBrand} 브랜드의 업로드된 도면이 없습니다. 관리자 페이지에서 모델을 추가해주세요.</p>`;
+        diagramGrid.innerHTML = diagramCountInfo + `<p>${selectedBrand} 브랜드의 업로드된 도면이 없습니다. 관리자 페이지에서 모델을 추가해주세요.</p>`;
         return;
     }
     
     // 도면 그리드 생성
-    let gridHTML = '';
+    let gridHTML = diagramCountInfo;
     brandDiagrams.forEach(diagram => {
         gridHTML += `
             <div class="diagram-item" onclick="selectDiagram('${diagram.key}', '${diagram.brand} ${diagram.model}')">
@@ -1279,32 +1462,30 @@ async function addModel(event) {
     
     try {
         if (models[brand] && models[brand].includes(modelName)) {
-            // 기존 모델에 도면만 업데이트
+            // 기존 모델에 도면 추가
             if (!diagramFile) {
                 alert('기존 모델에 도면을 추가하려면 이미지 파일을 선택하세요.');
                 return;
             }
             
-            // 기존 이미지가 있다면 삭제
-            if (modelImages[key] && modelImages[key].startsWith('https://')) {
-                try {
-                    const oldImagePath = modelImages[key].split('/').pop().split('?')[0];
-                    await deleteImageFromStorage(`diagrams/${brand}/${oldImagePath}`);
-                } catch (error) {
-                    console.log('기존 이미지 삭제 중 오류 (무시):', error);
-                }
+            // modelImages를 배열로 초기화 (기존 단일 이미지가 있는 경우)
+            if (modelImages[key] && !Array.isArray(modelImages[key])) {
+                modelImages[key] = [modelImages[key]];
+            } else if (!modelImages[key]) {
+                modelImages[key] = [];
             }
             
             // Firebase Storage에 새 이미지 업로드
             if (isFirebaseEnabled && firebaseStorage) {
-                const imagePath = generateImagePath(brand, modelName);
+                const timestamp = Date.now();
+                const imagePath = `diagrams/${brand}/${modelName}_${timestamp}.jpg`;
                 const downloadURL = await uploadImageToStorage(diagramFile, imagePath);
-                modelImages[key] = downloadURL;
+                modelImages[key].push(downloadURL);
             } else {
                 // Firebase Storage가 비활성화된 경우 Base64 사용
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    modelImages[key] = e.target.result;
+                    modelImages[key].push(e.target.result);
                     saveToStorage();
                     updateUI();
                 };
@@ -1314,7 +1495,7 @@ async function addModel(event) {
             
             await saveToStorage();
             updateUI();
-            alert('기존 모델에 도면이 업데이트되었습니다.');
+            alert(`${modelName} 모델에 도면이 추가되었습니다. (총 ${modelImages[key].length}개)`);
         } else {
             // 새 모델 추가
             if (!models[brand]) {
@@ -1330,16 +1511,20 @@ async function addModel(event) {
             
             // 이미지 파일 처리
             if (diagramFile) {
+                // modelImages를 배열로 초기화
+                modelImages[key] = [];
+                
                 if (isFirebaseEnabled && firebaseStorage) {
                     // Firebase Storage에 이미지 업로드
-                    const imagePath = generateImagePath(brand, modelName);
+                    const timestamp = Date.now();
+                    const imagePath = `diagrams/${brand}/${modelName}_${timestamp}.jpg`;
                     const downloadURL = await uploadImageToStorage(diagramFile, imagePath);
-                    modelImages[key] = downloadURL;
+                    modelImages[key].push(downloadURL);
                 } else {
                     // Firebase Storage가 비활성화된 경우 Base64 사용
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        modelImages[key] = e.target.result;
+                        modelImages[key].push(e.target.result);
                         saveToStorage();
                         updateUI();
                     };
@@ -1953,6 +2138,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Firebase 또는 LocalStorage에서 데이터 로드
     await loadFromStorage();
     
+    // 현재 등록된 데이터 상태 확인
+    checkCurrentData();
+    
     // 로그인 폼
     document.getElementById('login-form').addEventListener('submit', handleLogin);
     
@@ -2151,3 +2339,5 @@ window.selectDiagram = selectDiagram;
 window.backToGrid = backToGrid;
 window.showAllDiagrams = showAllDiagrams;
 window.showBrandDiagrams = showBrandDiagrams;
+window.checkCurrentData = checkCurrentData;
+window.deleteImage = deleteImage;

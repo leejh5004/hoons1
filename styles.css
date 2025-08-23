@@ -1114,3 +1114,37 @@ header h1 {
     font-size: 12px;
     font-weight: bold;
 }
+
+.diagram-item .delete-btn {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    opacity: 1;
+    padding: 0;
+    line-height: 1;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    z-index: 10;
+}
+
+.diagram-item .delete-btn:hover {
+    background: #c82333;
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.diagram-item:hover .delete-btn {
+    opacity: 1;
+}
